@@ -342,7 +342,7 @@ const ROUNDS=[
     color:'r1',time:15,
     qs:[
       {era:'La Rueda · Antigüedad',q:'¿En qué región se inventó la rueda por primera vez?',opts:['Mesopotamia','Egipto','China','India'],ans:0},
-      {era:'Al-Juarismi · Edad Media',q:'¿Qué término matemático deriva directamente del nombre de Al-Juarismi?',opts:['Álgebra','Algoritmo','Aritmética','Álculo'],ans:1},
+      {era:'Al-Juarismi · Edad Media',q:'¿Qué término matemático deriva directamente del nombre de Al-Juarismi?',opts:['Álgebra','Algoritmo','Aritmética','Cálculo'],ans:1},
       {era:'Copérnico · Era Moderna',q:'¿Cuánto tardó Copérnico en publicar su modelo heliocéntrico?',opts:['Meses','Décadas','1 año','Lo publicó inmediatamente'],ans:1},
     ]
   },
@@ -351,9 +351,9 @@ const ROUNDS=[
     sub:'La imagen se va revelando — ¿quién adivina primero?',
     color:'r2',time:20,
     qs:[
-      {era:'Máquina de Vapor',q:'¿Qué invento histórico muestra esta imagen?',opts:['Máquina de vapor','Locomotora a vapor','Motor de combustión','Generador eléctrico'],ans:0,img:'imagen/imagen8.jpg'},
+      {era:'Máquina de Vapor · Rev. Industrial',q:'¿Qué invento histórico muestra esta imagen?',opts:['Máquina de vapor','Locomotora a vapor','Motor de combustión','Generador eléctrico'],ans:0,img:'imagen/imagen11.jpg'},
       {era:'ENIAC · Era Digital',q:'¿Qué representa esta imagen histórica?',opts:['Primer satélite','ENIAC — primera computadora','Primer servidor web','Centro de control NASA'],ans:1,img:'imagen/imagen16.jpg'},
-      {era:'Filosofía Griega',q:'¿A qué período histórico pertenece esta escena?',opts:['Roma antigua','Mesopotamia','Grecia clásica','Egipto faraónico'],ans:2,img:'imagen/imagen3.jpg'},
+      {era:'Filosofía Griega · Antigüedad',q:'¿A qué período histórico pertenece esta escena?',opts:['Roma antigua','Mesopotamia','Grecia clásica','Egipto faraónico'],ans:2,img:'imagen/imagen3.jpg'},
     ]
   },
   {
@@ -361,9 +361,9 @@ const ROUNDS=[
     sub:'¿A qué hito histórico pertenece este video?',
     color:'r3',time:20,
     qs:[
-      {era:'La Rueda',q:'¿Qué invento histórico muestra este video animado?',opts:['La rueda','El arado','La palanca','El eje'],ans:0,vid:'video/video1.mp4'},
-      {era:'IA Generativa',q:'¿Qué tecnología representa este video?',opts:['ARPANET','World Wide Web','IA Generativa','Computación cuántica'],ans:2,vid:'video/video13.mp4'},
-      {era:'Máquina de Vapor',q:'¿Qué revolución histórica evoca este video?',opts:['Revolución Francesa','Revolución Industrial','Revolución Científica','Revolución Digital'],ans:1,vid:'video/video8.mp4'},
+      {era:'La Rueda · Antigüedad',q:'¿Qué invento histórico muestra este video animado?',opts:['La rueda','El arado','La palanca','El eje'],ans:0,vid:'video/video1.mp4'},
+      {era:'IA Generativa · Era Digital',q:'¿Qué tecnología representa este video?',opts:['ARPANET','World Wide Web','IA Generativa','Computación cuántica'],ans:2,vid:'video/video13.mp4'},
+      {era:'Máquina de Vapor · Rev. Industrial',q:'¿Qué revolución histórica evoca este video?',opts:['Revolución Francesa','Revolución Industrial','Revolución Científica','Revolución Digital'],ans:1,vid:'video/video8.mp4'},
     ]
   },
   {
@@ -371,10 +371,10 @@ const ROUNDS=[
     sub:'¡Rápido! Solo 8 segundos por pregunta',
     color:'r4',time:8,
     qs:[
-      {era:'ENIAC',q:'El ENIAC fue diseñado para predecir el clima.',opts:['Verdadero','Falso'],ans:1},
-      {era:'Gutenberg',q:'Tim Berners-Lee patentó la World Wide Web para proteger su invento.',opts:['Verdadero','Falso'],ans:1},
-      {era:'Wright',q:'Los Hermanos Wright eran ingenieros con título universitario.',opts:['Verdadero','Falso'],ans:1},
-      {era:'Kuhn',q:'Según Kuhn, la IA Generativa representa un cambio de paradigma.',opts:['Verdadero','Falso'],ans:0},
+      {era:'ENIAC · Era Digital',q:'El ENIAC fue diseñado para predecir el clima.',opts:['Verdadero','Falso'],ans:1},
+      {era:'World Wide Web · Era Digital',q:'Tim Berners-Lee patentó la World Wide Web para proteger su invento.',opts:['Verdadero','Falso'],ans:1},
+      {era:'Hermanos Wright · Rev. Industrial',q:'Los Hermanos Wright eran ingenieros con título universitario.',opts:['Verdadero','Falso'],ans:1},
+      {era:'IA · Kuhn',q:'Según Kuhn, la IA Generativa representa un cambio de paradigma.',opts:['Verdadero','Falso'],ans:0},
     ]
   }
 ];
@@ -453,18 +453,35 @@ function listenPlayers(){
 }
 
 /* ══ LISTEN GAME (player) ══ */
+let lastStatus='', lastQShown=-1;
 function listenGame(){
   addFBListener(ref(db,`rooms/${roomCode}`),snap=>{
     if(!snap.exists())return;
     const room=snap.val();
-    if(room.status==='round-intro'){
-      const q=ALL_QS[room.currentQ];
+    const status=room.status;
+    const cQ=room.currentQ;
+
+    // round intro — only show once per question index
+    if(status==='round-intro' && cQ!==lastQShown){
+      lastQShown=cQ; lastStatus=status;
+      const q=ALL_QS[cQ];
       setRoundTheme(q.rColor);
       showRoundIntro(q,false);
     }
-    if(room.status==='playing'){showQuestion(room.currentQ,false)}
-    if(room.status==='results'){showPlayerResult(room)}
-    if(room.status==='podium'){showPodium(room)}
+    // playing — only show question once, don't re-render if already answered
+    if(status==='playing' && (cQ!==lastQShown || lastStatus!=='playing')){
+      lastQShown=cQ; lastStatus=status;
+      showQuestion(cQ,false);
+    }
+    // results — show player result once
+    if(status==='results' && lastStatus!=='results'){
+      lastStatus=status;
+      showPlayerResult(room);
+    }
+    if(status==='podium' && lastStatus!=='podium'){
+      lastStatus=status;
+      showPodium(room);
+    }
   });
 }
 
@@ -739,6 +756,7 @@ document.getElementById('btn-reset').onclick=async()=>{
   clearFBListeners();clearInterval(timerInterval);
   if(roomCode)await remove(ref(db,`rooms/${roomCode}`));
   roomCode=null;playerKey=null;playerName=null;qIdx=0;answered=false;isHost=false;
+  lastStatus='';lastQShown=-1;
   document.body.className='';show('sc-land');
 };
 </script>
